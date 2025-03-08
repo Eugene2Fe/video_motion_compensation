@@ -1,16 +1,16 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include <iostream>
+#include <ctime>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
-#include <ctime>
 
 enum class LogLevel { INFO, WARNING, ERROR, TO_FILE_ONLY };
 
 class Logger {
-public:
+   public:
     explicit Logger(const std::string& filename);
     ~Logger();
 
@@ -26,10 +26,10 @@ public:
         log(level, oss.str());
     }
 
-private:
+   private:
     std::ofstream logFile;
     std::string getTimeStamp();
     std::string levelToString(LogLevel level);
 };
 
-#endif // LOGGER_H
+#endif  // LOGGER_H

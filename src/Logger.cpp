@@ -1,8 +1,7 @@
 #include "Logger.hpp"
 
 Logger::Logger(const std::string& log_filename) {
-    // logFile.open(log_filename, std::ios::app); // откр в режиме добавления
-    logFile.open(log_filename, std::ios::out); // В режиме перезаписи
+    logFile.open(log_filename, std::ios::out);  // В режиме перезаписи
     if (!logFile) {
         std::cerr << "Error: cannot open file for logs!" << std::endl;
     }
@@ -35,10 +34,14 @@ std::string Logger::getTimeStamp() {
 
 std::string Logger::levelToString(LogLevel level) {
     switch (level) {
-        case LogLevel::INFO: return "INFO";
-        case LogLevel::WARNING: return "WARNING";
-        case LogLevel::ERROR: return "ERROR";
-        case LogLevel::TO_FILE_ONLY: return "TO_FILE_ONLY";
+        case LogLevel::INFO:
+            return "INFO";
+        case LogLevel::WARNING:
+            return "WARNING";
+        case LogLevel::ERROR:
+            return "ERROR";
+        case LogLevel::TO_FILE_ONLY:
+            return "TO_FILE_ONLY";
     }
     return "UNKNOWN";
 }

@@ -5,7 +5,7 @@ cv::Mat GrayscaleConverter::convertToGray(const cv::Mat& colorImage) {
         throw std::runtime_error("ERROR: empty imput image!");
     }
 
-    cv::Mat grayImage(colorImage.rows, colorImage.cols, CV_8UC1); // Empty matrix 8bit 1ch
+    cv::Mat grayImage(colorImage.rows, colorImage.cols, CV_8UC1);  // Empty matrix 8bit 1ch
 
     for (int y = 0; y < colorImage.rows; ++y) {
         for (int x = 0; x < colorImage.cols; ++x) {
