@@ -346,12 +346,13 @@ int main(int argc, char **argv) {
             warpAffine(current_frame, current_frame_rehab, T, current_frame.size());
             /*
             warpAffine — применяет матрицу T к current_frame, для исправленных кадров
-            current_frame_rehab. Вообщем тут устраняеем дрожание сьемки, используя сглаженные параметры
-            движения
+            current_frame_rehab. Вообщем тут устраняеем дрожание сьемки, используя сглаженные
+            параметры движения
             */
 
             if (crop_x * 2 >= current_frame_rehab.rows || crop_y * 2 >= current_frame_rehab.cols) {
-                logger.log(LogLevel::ERROR, "Ошибка: Обрезка выходит за границы кадра! Пропускаем кадр.");
+                logger.log(LogLevel::ERROR,
+                           "Ошибка: Обрезка выходит за границы кадра! Пропускаем кадр.");
                 continue;
             }
 
@@ -364,7 +365,8 @@ int main(int argc, char **argv) {
             video_writer.write(current_frame_rehab);
 
         } catch (cv::Exception &e) {
-            logger.log(LogLevel::ERROR, "OpenCV Exception: ", e.what(), " на кадре ", frame_counter);
+            logger.log(LogLevel::ERROR, "OpenCV Exception: ", e.what(), " на кадре ",
+                       frame_counter);
         } catch (std::exception &e) {
             logger.log(LogLevel::ERROR, "Exception: ", e.what(), " на кадре ", frame_counter);
         } catch (...) {
