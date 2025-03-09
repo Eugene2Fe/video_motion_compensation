@@ -5,7 +5,7 @@
 #include "GrayscaleConverter.hpp"
 #include "Logger.hpp"
 
-bool AUTO_BORDER_CROP_PIXELS = true;
+bool AUTO_BORDER_CROP_PIXELS = false;
 int BORDER_CROP_PIXELS = 20;
 bool DEBUG = true;
 
@@ -86,6 +86,8 @@ int main(int argc, char **argv) {
             return 0;
         } else if (arg == "--debug") {
             DEBUG = true;
+        } else if (arg == "--BORDER_CROP_PIXELS=AUTO") {
+            AUTO_BORDER_CROP_PIXELS = true;
         } else if (arg.rfind("--BORDER_CROP_PIXELS=", 0) == 0) {
             try {
                 BORDER_CROP_PIXELS = std::stoi(arg.substr(21));
@@ -129,11 +131,7 @@ int main(int argc, char **argv) {
     video_info.print();
 
     // Определяем кодек для исходного видео
-    int codec_type = static_cast<int>(video_reader.get(cv::CAP_PROP_FOURCC));
-    if (codec_type == 0) {
-        logger.log(LogLevel::WARNING, "Кодек не определён, используется стандартный (MP4V)");
-        codec_type = cv::VideoWriter::fourcc('M', 'P', '4', 'V');
-    }
+    int codec_type = cv::VideoWriter::fourcc('a', 'v', 'c', '1');
 
     // Определяем расширение файла исходного видео
     std::string input_filename(argv[1]);
@@ -219,7 +217,7 @@ int main(int argc, char **argv) {
         current_frame.copyTo(previous_frame);
         current_grey_frame.copyTo(previous_grey_frame);
 
-        std::cout << "\rОбработка кадра: " << frame_counter << " / " << video_info.total_frames
+        std::cout << "\rОбработка кадра: " << frame_counter + 1 << " / " << video_info.total_frames
                   << " [" << std::string((frame_counter * 50) / video_info.total_frames, '=')
                   << std::string(50 - (frame_counter * 50) / video_info.total_frames, ' ') << "] "
                   << " Найденные точки: " << filtered_keypoints_prev.size() << std::flush;
@@ -327,36 +325,51 @@ int main(int argc, char **argv) {
                " пикселей, по высоте на ", crop_y, " пикселей.");
 
     while (frame_counter < video_info.total_frames - 1) {
-        video_reader >> current_frame;
-
-        if (current_frame.empty()) {
-            logger.log(LogLevel::INFO, "Все фреймы выходного видео обработаны!");
-            break;
-        }
-
-        T.at<double>(0, 0) = cos(new_frame_shift_info[frame_counter].delta_angle);
-        T.at<double>(0, 1) = -sin(new_frame_shift_info[frame_counter].delta_angle);
-        T.at<double>(1, 0) = sin(new_frame_shift_info[frame_counter].delta_angle);
-        T.at<double>(1, 1) = cos(new_frame_shift_info[frame_counter].delta_angle);
-
-        T.at<double>(0, 2) = new_frame_shift_info[frame_counter].delta_x;
-        T.at<double>(1, 2) = new_frame_shift_info[frame_counter].delta_y;
-
         cv::Mat current_frame_rehab;
-        warpAffine(current_frame, current_frame_rehab, T, current_frame.size());
-        /*
-        warpAffine — применяет матрицу T к current_frame, для исправленных кадров
-        current_frame_rehab. Вообщем тут устраняеем дрожание сьемки, используя сглаженные параметры
-        движения
-        */
 
-        current_frame_rehab =
-            current_frame_rehab(cv::Range(crop_x, current_frame_rehab.rows - crop_x),
-                                cv::Range(crop_y, current_frame_rehab.cols - crop_y));
-        // Ресайзим фреймы для компенсации обрезки
-        resize(current_frame_rehab, current_frame_rehab, current_frame.size());
+        try {
+            video_reader >> current_frame;
 
-        video_writer.write(current_frame_rehab);
+            if (current_frame.empty()) {
+                logger.log(LogLevel::INFO, "Все фреймы выходного видео обработаны!");
+                break;
+            }
+
+            T.at<double>(0, 0) = cos(new_frame_shift_info[frame_counter].delta_angle);
+            T.at<double>(0, 1) = -sin(new_frame_shift_info[frame_counter].delta_angle);
+            T.at<double>(1, 0) = sin(new_frame_shift_info[frame_counter].delta_angle);
+            T.at<double>(1, 1) = cos(new_frame_shift_info[frame_counter].delta_angle);
+
+            T.at<double>(0, 2) = new_frame_shift_info[frame_counter].delta_x;
+            T.at<double>(1, 2) = new_frame_shift_info[frame_counter].delta_y;
+
+            warpAffine(current_frame, current_frame_rehab, T, current_frame.size());
+            /*
+            warpAffine — применяет матрицу T к current_frame, для исправленных кадров
+            current_frame_rehab. Вообщем тут устраняеем дрожание сьемки, используя сглаженные параметры
+            движения
+            */
+
+            if (crop_x * 2 >= current_frame_rehab.rows || crop_y * 2 >= current_frame_rehab.cols) {
+                logger.log(LogLevel::ERROR, "Ошибка: Обрезка выходит за границы кадра! Пропускаем кадр.");
+                continue;
+            }
+
+            current_frame_rehab =
+                current_frame_rehab(cv::Range(crop_x, current_frame_rehab.rows - crop_x),
+                                    cv::Range(crop_y, current_frame_rehab.cols - crop_y));
+            // Ресайзим фреймы для компенсации обрезки
+            resize(current_frame_rehab, current_frame_rehab, current_frame.size());
+
+            video_writer.write(current_frame_rehab);
+
+        } catch (cv::Exception &e) {
+            logger.log(LogLevel::ERROR, "OpenCV Exception: ", e.what(), " на кадре ", frame_counter);
+        } catch (std::exception &e) {
+            logger.log(LogLevel::ERROR, "Exception: ", e.what(), " на кадре ", frame_counter);
+        } catch (...) {
+            logger.log(LogLevel::ERROR, "Неизвестная ошибка на кадре ", frame_counter);
+        }
 
         if (DEBUG) {
             cv::Mat canvas = cv::Mat::zeros(current_frame.rows * 2 + ADDITION_PREVIEW_OFFSET,

@@ -15,7 +15,7 @@
 * Оптимизировано для работы с видео высокого разрешения.
 * Использование библиотек OpenCV
 
-## Устанвока
+## Установка
 
 # Требования
 
@@ -46,12 +46,12 @@ make
 4. Для более подробной информации и списка доступных ключей можно вызывать ```--help```
 
 
-# Инструкция перебсорки OpenCV с FFMPEG
+# Инструкция пересборки OpenCV с FFMPEG
 Проверить поддержку ffmpeg можно командой, где 'YES' значит есть поддержка, 'NO' нет.
 ```sh
 python3 -c "import cv2; print(cv2.getBuildInformation())" | grep FFMPEG
 ```
-# Если вывело NO, то выполняем переустановку
+# Если отсутствует подержка, то необходимо выполнить переустановку OpenCV c поддержкой FFmpeg
 ```sh
 sudo apt-get update
 sudo apt-get install ffmpeg libavcodec-dev libavformat-dev libavutil-dev
@@ -63,7 +63,4 @@ cmake -D WITH_FFMPEG=ON ..
 make -j$(nproc)
 sudo make install
 ```
-Повторно проверить поддержку ffmpeg можно командой, где 'YES' значит есть поддержка, 'NO' нет.
-```sh
-python3 -c "import cv2; print(cv2.getBuildInformation())" | grep FFMPEG
-```
+И повторно выполнить проверку.
