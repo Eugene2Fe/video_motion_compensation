@@ -1,0 +1,33 @@
+Checks: '
+-*,
+bugprone-*,
+-bugprone-easily-swappable-parameters,
+clang-analyzer-*,
+concurrency-*,
+-concurrency-mt-unsafe,
+cppcoreguidelines-*,
+-cppcoreguidelines-avoid-const-or-ref-data-members,
+-cppcoreguidelines-non-private-member-variables-in-classes,
+google-*,
+misc-*,
+-misc-non-private-member-variables-in-classes,
+modernize-*,
+-modernize-macro-to-enum,
+-modernize-use-nodiscard,
+-modernize-use-trailing-return-type,
+performance-*,
+portability-*,
+readability-*,
+-readability-redundant-access-specifiers,
+'
+
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*'
+CheckOptions:
+  - { key: readability-identifier-naming.ClassCase,     value: CamelCase  }
+  - { key: readability-identifier-naming.VariableCase,  value: camelBack }
+  - { key: readability-identifier-naming.FunctionCase,  value: camelBack }
+  - { key: readability-identifier-naming.ParameterCase, value: camelBack }
+  - { key: readability-identifier-naming.NamespaceCase, value: lower_case }
+  - { key: readability-identifier-naming.StructCase,    value: CamelCase }
+  - { key: cppcoreguidelines-macro-usage.AllowedRegexp, value: SYNCER_* }
