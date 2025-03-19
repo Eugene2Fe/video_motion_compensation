@@ -16,149 +16,63 @@ struct VideoInfo {
     double total_frames;
     double duration;
 
-    void print() const {
-        std::cout << "Информация о видео:" << std::endl;
-        std::cout << "  Разрешение: " << frame_width << "x" << frame_height << std::endl;
-        std::cout << "  Частота кадров: " << frame_rate << " FPS" << std::endl;
-        std::cout << "  Количество кадров: " << total_frames << std::endl;
-        std::cout << "  Длительность: " << duration << " секунд" << std::endl;
-    }
+    void print() const;
 };
 
-struct FrameTransformation {
-    FrameTransformation() {}
-    FrameTransformation(double shift_x, double shift_y, double rotation_angle) {
-        delta_x = shift_x;
-        delta_y = shift_y;
-        delta_angle = rotation_angle;
-    }
-    double delta_x;
-    double delta_y;
-    double delta_angle;
-};
-
-struct MotionTrajectory {
-    MotionTrajectory() {}
-    MotionTrajectory(double coord_x, double coord_y, double _angle) {
-        position_x = coord_x;
-        position_y = coord_y;
-        angle = _angle;
-    }
-    double position_x;
-    double position_y;
-    double angle;
-};
-
-// Функция для проверки наличия FFMPEG в сборке OpenCV
-bool isFFmpegEnabled() {
-    std::string build_info = cv::getBuildInformation();
-    return build_info.find("FFMPEG") != std::string::npos;
+void VideoInfo::print() const {
+    std::cout << "Информация о видео:" << std::endl;
+    std::cout << "  Разрешение: " << frame_width << "x" << frame_height << std::endl;
+    std::cout << "  Частота кадров: " << frame_rate << " FPS" << std::endl;
+    std::cout << "  Количество кадров: " << total_frames << std::endl;
+    std::cout << "  Длительность: " << duration << " секунд" << std::endl;
 }
 
-void printHelp() {
-    std::cout << "Usage: ./VideoMotionCompensation [video.file] [options]" << std::endl;
-    std::cout << "Options:" << std::endl;
-    std::cout << "  --debug               Enable debug mode. Draw compared videos : Default:ON"
-              << std::endl;
-    std::cout << "  --BORDER_CROP_PIXELS=N  Set border crop pixels (default: AUTO CALCULATED)"
-              << std::endl;
-    std::cout << "  --help                Show this help message" << std::endl;
-}
-
-int main(int argc, char **argv) {
-    int threads = cv::getNumThreads();
-    // cv::setNumThreads(1); // если хотим подрезать
-    threads = cv::getNumThreads();  // Повторно получаем актуальное число потоков
-    std::cout << "OpenCV работает в " << threads << " потоках" << std::endl;
-
-    Logger logger("worklog.file");
-
-    if (argc < 2) {  // todo : add more if contitions
-        // logger.log(LogLevel::INFO, "Usage: ./VideoMotionCompensation [video.file] --flags");
-        printHelp();
-        return 0;
-    }
-
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        if (arg == "--help") {
-            printHelp();
-            return 0;
-        } else if (arg == "--debug") {
-            DEBUG = true;
-        } else if (arg == "--BORDER_CROP_PIXELS=AUTO") {
-            AUTO_BORDER_CROP_PIXELS = true;
-        } else if (arg.rfind("--BORDER_CROP_PIXELS=", 0) == 0) {
-            try {
-                BORDER_CROP_PIXELS = std::stoi(arg.substr(21));
-                if (BORDER_CROP_PIXELS < 0 || BORDER_CROP_PIXELS > MAX_CROP_PIXELS) {
-                    logger.log(LogLevel::ERROR,
-                               "Ошибка: Некорректное значение для BORDER_CROP_PIXELS!");
-                    return -1;
-                }
-                AUTO_BORDER_CROP_PIXELS = false;
-            } catch (const std::exception &) {
-                std::cerr << "Ошибка: Некорректное значение для BORDER_CROP_PIXELS!" << std::endl;
-                return -1;
-            }
-        } else if (arg[0] == '-') {
-            std::cerr << "Предупреждение: Неизвестный флаг '" << arg << "' будет проигнорирован."
-                      << std::endl;
-        }
-    }
-
-    std::cout << "Открываем файл: " << argv[1] << std::endl;
-    cv::VideoCapture video_reader(argv[1]);
-
-    if (!video_reader.isOpened()) {
-        logger.log(LogLevel::ERROR, "Ошибка: не удалось открыть видео!");
-        return -1;
-    }
-
-    if (!isFFmpegEnabled()) {
-        std::cerr << "Ошибка: OpenCV собран без поддержки FFMPEG!" << std::endl;
-        return -1;
-    }
-
+VideoInfo getVideoInfo(cv::VideoCapture& video_reader) {
     VideoInfo video_info = {
-        video_reader.get(cv::CAP_PROP_FRAME_WIDTH), video_reader.get(cv::CAP_PROP_FRAME_HEIGHT),
-        video_reader.get(cv::CAP_PROP_FPS), video_reader.get(cv::CAP_PROP_FRAME_COUNT), 0.0};
+        video_reader.get(cv::CAP_PROP_FRAME_WIDTH),
+        video_reader.get(cv::CAP_PROP_FRAME_HEIGHT),
+        video_reader.get(cv::CAP_PROP_FPS),
+        video_reader.get(cv::CAP_PROP_FRAME_COUNT),
+        0.0
+    };
 
     if (video_info.frame_rate > 0) {
         video_info.duration = video_info.total_frames / video_info.frame_rate;
     }
 
-    video_info.print();
+    return video_info;
+}
 
-    // Определяем кодек для исходного видео
-    int codec_type = cv::VideoWriter::fourcc('a', 'v', 'c', '1');
+struct FrameTransformation {
+    double delta_x, delta_y, delta_angle;
+    FrameTransformation(double shift_x = 0, double shift_y = 0, double rotation_angle = 0)
+        : delta_x(shift_x), delta_y(shift_y), delta_angle(rotation_angle) {}
+};
 
-    // Определяем расширение файла исходного видео
-    std::string input_filename(argv[1]);
-    std::string output_filename;
-    size_t dot_pos = input_filename.find_last_of(".");
-    if (dot_pos != std::string::npos) {
-        std::string extension = input_filename.substr(dot_pos);
-        output_filename = input_filename.substr(0, dot_pos) + "_stabilized" + extension;
-    } else {
-        output_filename = input_filename + "_stabilized.mp4";
-    }
+struct MotionTrajectory {
+    double position_x, position_y, angle;
+    MotionTrajectory(double coord_x = 0, double coord_y = 0, double _angle = 0)
+        : position_x(coord_x), position_y(coord_y), angle(_angle) {}
+};
 
-    // Создаём объект для записи стабилизированного видео
-    cv::VideoWriter video_writer(output_filename, codec_type, video_info.frame_rate,
-                                 cv::Size(video_info.frame_width, video_info.frame_height));
+bool isFFmpegEnabled() {
+    std::string build_info = cv::getBuildInformation();
+    return build_info.find("FFMPEG") != std::string::npos;
+}
 
-    cv::Mat last_good_Transformation;
-    cv::Mat current_frame;
-    cv::Mat previous_frame;
-    video_reader >> previous_frame;
-    cv::Mat previous_grey_frame = GrayscaleConverter::convertToGray(previous_frame);
-
-    // Получаем преобразование предыдущ в текущ кадра , а точнее (delta_x, delta_y, delta_angle) для
-    // всех кадров
+std::vector<FrameTransformation> processVideoFrames(
+    cv::VideoCapture& video_reader,
+    Logger& logger,
+    const VideoInfo& video_info,
+    int& frame_counter
+) {
     std::vector<FrameTransformation> frame_shift_info;
+    cv::Mat previous_frame, current_frame;
+    cv::Mat previous_grey_frame, current_grey_frame;
+    cv::Mat last_good_Transformation;
 
-    int frame_counter = 1;
+    video_reader >> previous_frame;
+    previous_grey_frame = GrayscaleConverter::convertToGray(previous_frame);
 
     while (true) {
         video_reader >> current_frame;
@@ -169,19 +83,17 @@ int main(int argc, char **argv) {
             break;
         }
 
-        std::vector<cv::Point2f> all_keypoints_curr;
-        std::vector<cv::Point2f> all_keypoints_prev;
-        std::vector<cv::Point2f> filtered_keypoints_curr;
-        std::vector<cv::Point2f> filtered_keypoints_prev;
+        std::vector<cv::Point2f> all_keypoints_curr, all_keypoints_prev;
+        std::vector<cv::Point2f> filtered_keypoints_curr, filtered_keypoints_prev;
         std::vector<uchar> tracking_status;
         std::vector<float> tracking_err;
 
-        cv::Mat current_grey_frame = GrayscaleConverter::convertToGray(current_frame);
+        current_grey_frame = GrayscaleConverter::convertToGray(current_frame);
 
         goodFeaturesToTrack(previous_grey_frame, all_keypoints_prev, GOOD_FEATURES_MAX_POINTS,
-                            GOOD_FEATURES_POINT_QUALITY, GOOD_FEATURES_POINTS_MIN_DIST_PX);
+                           GOOD_FEATURES_POINT_QUALITY, GOOD_FEATURES_POINTS_MIN_DIST_PX);
         calcOpticalFlowPyrLK(previous_grey_frame, current_grey_frame, all_keypoints_prev,
-                             all_keypoints_curr, tracking_status, tracking_err);
+                            all_keypoints_curr, tracking_status, tracking_err);
 
         // Плохие точки отбрасываем
         for (size_t i = 0; i < tracking_status.size(); i++) {
@@ -200,16 +112,11 @@ int main(int argc, char **argv) {
 
         T.copyTo(last_good_Transformation);
 
-        /*   Матрица трансформации выглядит  как :
-             cos(θ)  −sin(θ) Δx
-        T = [                    ]
-             sin(θ)  cos(θ)  Δy
-        */
         double delta_x = T.at<double>(0, 2);
         double delta_y = T.at<double>(1, 2);
         double delta_angle = atan2(T.at<double>(1, 0), T.at<double>(0, 0));
 
-        frame_shift_info.push_back(FrameTransformation(delta_x, delta_y, delta_angle));
+        frame_shift_info.push_back(FrameTransformation{delta_x, delta_y, delta_angle});
 
         logger.log(LogLevel::TO_FILE_ONLY, "Кадр=", frame_counter, " delta_x= ", delta_x,
                    " delta_y=", delta_y, " delta_angle=", delta_angle);
@@ -223,6 +130,101 @@ int main(int argc, char **argv) {
                   << " Найденные точки: " << filtered_keypoints_prev.size() << std::flush;
         frame_counter++;
     }
+
+    return frame_shift_info;
+}
+
+void threads_info() {
+    int threads = cv::getNumThreads();
+    // cv::setNumThreads(1); // если хотим подрезать
+    threads = cv::getNumThreads();  // Повторно получаем актуальное число потоков
+    std::cout << "OpenCV работает в " << threads << " потоках" << std::endl;
+}
+
+void printHelp() {
+    std::cout << "Usage: ./VideoMotionCompensation [video.file] [options]" << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "  --debug               Enable debug mode. Draw compared videos : Default:ON"
+              << std::endl;
+    std::cout << "  --BORDER_CROP_PIXELS=N  Set border crop pixels (default: AUTO CALCULATED)"
+              << std::endl;
+    std::cout << "  --help                Show this help message" << std::endl;
+}
+
+bool parseArguments(int argc, char** argv, bool& debug, bool& autoBorderCropPixels, int& borderCropPixels) {
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--help") {
+            printHelp();
+            return false;
+        } else if (arg == "--debug") {
+            debug = true;
+        } else if (arg == "--BORDER_CROP_PIXELS=AUTO") {
+            autoBorderCropPixels = true;
+        } else if (arg.rfind("--BORDER_CROP_PIXELS=", 0) == 0) {
+            try {
+                borderCropPixels = std::stoi(arg.substr(21));
+                if (borderCropPixels < 0 || borderCropPixels > MAX_CROP_PIXELS) {
+                    // logger.log(Logger::LogLevel::ERROR, "Ошибка: Некорректное значение для BORDER_CROP_PIXELS!");
+                    std::cerr << "Ошибка: Некорректное значение для BORDER_CROP_PIXELS!" << std::endl;
+                    return false;
+                }
+                autoBorderCropPixels = false;
+            } catch (const std::exception&) {
+                std::cerr << "Ошибка: Некорректное значение для BORDER_CROP_PIXELS!" << std::endl;
+                return false;
+            }
+        } else if (arg[0] == '-') {
+            std::cerr << "Предупреждение: Неизвестный флаг '" << arg << "' будет проигнорирован." << std::endl;
+        }
+    }
+
+    std::cout << "Открываем файл: " << argv[1] << std::endl;
+    return true;
+}
+
+std::string generateOutputFilename(const std::string& input_filename) {
+    std::string output_filename;
+    size_t dot_pos = input_filename.find_last_of(".");
+    if (dot_pos != std::string::npos) {
+        std::string extension = input_filename.substr(dot_pos);
+        output_filename = input_filename.substr(0, dot_pos) + "_stabilized" + extension;
+    } else {
+        output_filename = input_filename + "_stabilized.mp4";
+    }
+    return output_filename;
+}
+
+
+int main(int argc, char **argv) {
+
+    Logger logger("worklog.file");
+    threads_info();
+
+    if (argc < 2) { printHelp(); return -1; }
+    if (!parseArguments(argc, argv, DEBUG, AUTO_BORDER_CROP_PIXELS, BORDER_CROP_PIXELS)) {return -1;}
+    if (!isFFmpegEnabled()) {logger.log(LogLevel::ERROR, "Ошибка: OpenCV собран без поддержки FFMPEG!"); return -1;}
+    cv::VideoCapture video_reader(argv[1]);
+    if (!video_reader.isOpened()) {logger.log(LogLevel::ERROR, "Ошибка: не удалось открыть видео!"); return -1;}
+
+    VideoInfo video_info = getVideoInfo(video_reader);
+    video_info.print();
+
+    int codec_type = cv::VideoWriter::fourcc('a', 'v', 'c', '1');
+    std::string output_filename = generateOutputFilename(argv[1]);
+
+    // Создаём объект для записи стабилизированного видео
+    cv::VideoWriter video_writer(output_filename, codec_type, video_info.frame_rate,
+                                 cv::Size(video_info.frame_width, video_info.frame_height));
+
+    cv::Mat last_good_Transformation, current_frame, previous_frame;
+    video_reader >> previous_frame;
+    cv::Mat previous_grey_frame = GrayscaleConverter::convertToGray(previous_frame);
+
+    // Создаем преобразование предыдущ в текущ кадр, а точнее их (delta_x, delta_y, delta_angle) для всех кадров
+    int frame_counter = 1;
+    std::vector<FrameTransformation> frame_shift_info = processVideoFrames(
+        video_reader, logger, video_info, frame_counter);
 
     // Построение траектории движения камеры
     double a = 0;
