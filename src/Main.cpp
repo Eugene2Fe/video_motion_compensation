@@ -199,21 +199,22 @@ std::vector<MotionTrajectory> buildTrajectory(const std::vector<FrameTransformat
 std::vector<MotionTrajectory> smoothTrajectory(const std::vector<MotionTrajectory> &trajectory, Logger &logger) {
     std::vector<MotionTrajectory> smoothed_trajectory;
 
-    for (size_t i = 0; i < trajectory.size(); i++) {
-        double sum_x = 0;
-        double sum_y = 0;
-        double sum_a = 0;
-        int frames_processed = 0;
+for (size_t i = 0; i < trajectory.size(); i++) {
+    double sum_x = 0;
+    double sum_y = 0;
+    double sum_a = 0;
+    int frames_processed = 0;
 
-        for (int j = -NFRAMES_SMOOTH_COEF; j <= NFRAMES_SMOOTH_COEF; j++) {
-            if (i + j >= 0 && i + j < trajectory.size()) {
-                sum_x += trajectory[i + j].position_x;
-                sum_y += trajectory[i + j].position_y;
-                sum_a += trajectory[i + j].angle;
+    for (int j = -NFRAMES_SMOOTH_COEF; j <= NFRAMES_SMOOTH_COEF; j++) {
+        ptrdiff_t index = static_cast<ptrdiff_t>(i) + j;
+        if (index >= 0 && index < static_cast<ptrdiff_t>(trajectory.size())) {
+            sum_x += trajectory[index].position_x;
+            sum_y += trajectory[index].position_y;
+            sum_a += trajectory[index].angle;
 
-                frames_processed++;
-            }
+            frames_processed++;
         }
+    }
 
         double avg_x = sum_x / frames_processed;
         double avg_y = sum_y / frames_processed;
