@@ -106,7 +106,8 @@ VideoInfo getVideoInfo(cv::VideoCapture &video_reader) {
     return video_info;
 }
 
-std::vector<FrameTransformation> calculateFrameShifts(cv::VideoCapture &video_reader, Logger &logger, const VideoInfo &video_info) {
+std::vector<FrameTransformation> calculateFrameShifts(cv::VideoCapture &video_reader,
+                                                      Logger &logger, const VideoInfo &video_info) {
     std::vector<FrameTransformation> frame_shift_info;
     cv::Mat last_good_Transformation;
     cv::Mat current_frame;
@@ -177,7 +178,8 @@ std::vector<FrameTransformation> calculateFrameShifts(cv::VideoCapture &video_re
     return frame_shift_info;
 }
 
-std::vector<MotionTrajectory> buildTrajectory(const std::vector<FrameTransformation> &frame_shift_info, Logger &logger) {
+std::vector<MotionTrajectory> buildTrajectory(
+    const std::vector<FrameTransformation> &frame_shift_info, Logger &logger) {
     double x = 0;
     double y = 0;
     double a = 0;
@@ -196,25 +198,26 @@ std::vector<MotionTrajectory> buildTrajectory(const std::vector<FrameTransformat
     return trajectory;
 }
 
-std::vector<MotionTrajectory> smoothTrajectory(const std::vector<MotionTrajectory> &trajectory, Logger &logger) {
+std::vector<MotionTrajectory> smoothTrajectory(const std::vector<MotionTrajectory> &trajectory,
+                                               Logger &logger) {
     std::vector<MotionTrajectory> smoothed_trajectory;
 
-for (size_t i = 0; i < trajectory.size(); i++) {
-    double sum_x = 0;
-    double sum_y = 0;
-    double sum_a = 0;
-    int frames_processed = 0;
+    for (size_t i = 0; i < trajectory.size(); i++) {
+        double sum_x = 0;
+        double sum_y = 0;
+        double sum_a = 0;
+        int frames_processed = 0;
 
-    for (int j = -NFRAMES_SMOOTH_COEF; j <= NFRAMES_SMOOTH_COEF; j++) {
-        ptrdiff_t index = static_cast<ptrdiff_t>(i) + j;
-        if (index >= 0 && index < static_cast<ptrdiff_t>(trajectory.size())) {
-            sum_x += trajectory[index].position_x;
-            sum_y += trajectory[index].position_y;
-            sum_a += trajectory[index].angle;
+        for (int j = -NFRAMES_SMOOTH_COEF; j <= NFRAMES_SMOOTH_COEF; j++) {
+            ptrdiff_t index = static_cast<ptrdiff_t>(i) + j;
+            if (index >= 0 && index < static_cast<ptrdiff_t>(trajectory.size())) {
+                sum_x += trajectory[index].position_x;
+                sum_y += trajectory[index].position_y;
+                sum_a += trajectory[index].angle;
 
-            frames_processed++;
+                frames_processed++;
+            }
         }
-    }
 
         double avg_x = sum_x / frames_processed;
         double avg_y = sum_y / frames_processed;
@@ -231,10 +234,8 @@ for (size_t i = 0; i < trajectory.size(); i++) {
 
 std::vector<FrameTransformation> calculateCorrectedShifts(
     const std::vector<FrameTransformation> &frame_shift_info,
-    const std::vector<MotionTrajectory> &smoothed_trajectory,
-    double &max_diff_x,
-    double &max_diff_y
-) {
+    const std::vector<MotionTrajectory> &smoothed_trajectory, double &max_diff_x,
+    double &max_diff_y) {
     std::vector<FrameTransformation> new_frame_shift_info;
     double x = 0;
     double y = 0;
@@ -266,8 +267,8 @@ std::vector<FrameTransformation> calculateCorrectedShifts(
 }
 
 void writeStabilizedVideo(cv::VideoCapture &video_reader, cv::VideoWriter &video_writer,
-                          const std::vector<FrameTransformation> &new_frame_shift_info,
-                          int crop_x, int crop_y, Logger &logger) {
+                          const std::vector<FrameTransformation> &new_frame_shift_info, int crop_x,
+                          int crop_y, Logger &logger) {
     int frame_counter = 0;
     video_reader.set(cv::CAP_PROP_POS_FRAMES, frame_counter);
     cv::Mat T(2, 3, CV_64F);
@@ -280,7 +281,7 @@ void writeStabilizedVideo(cv::VideoCapture &video_reader, cv::VideoWriter &video
             video_reader >> current_frame;
 
             if (current_frame.empty()) {
-                logger.log(LogLevel::INFO, "Все фреймы выходного видео этапы коррекции!");
+                logger.log(LogLevel::INFO, "Готово, стабилизированное видео сохранено!");
                 break;
             }
 
@@ -377,7 +378,8 @@ int main(int argc, char **argv) {
     cv::VideoWriter video_writer(output_filename, codec_type, video_info.frame_rate,
                                  cv::Size(video_info.frame_width, video_info.frame_height));
 
-    std::vector<FrameTransformation> frame_shift_info = calculateFrameShifts(video_reader, logger, video_info);
+    std::vector<FrameTransformation> frame_shift_info =
+        calculateFrameShifts(video_reader, logger, video_info);
 
     std::vector<MotionTrajectory> trajectory = buildTrajectory(frame_shift_info, logger);
     std::vector<MotionTrajectory> smoothed_trajectory = smoothTrajectory(trajectory, logger);
@@ -385,8 +387,8 @@ int main(int argc, char **argv) {
     double max_diff_x = 0.0;
     double max_diff_y = 0.0;
 
-    std::vector<FrameTransformation> new_frame_shift_info = calculateCorrectedShifts(
-    frame_shift_info, smoothed_trajectory, max_diff_x, max_diff_y);
+    std::vector<FrameTransformation> new_frame_shift_info =
+        calculateCorrectedShifts(frame_shift_info, smoothed_trajectory, max_diff_x, max_diff_y);
 
     int crop_x = 0;
     int crop_y = 0;
