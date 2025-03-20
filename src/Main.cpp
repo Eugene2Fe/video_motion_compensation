@@ -7,7 +7,7 @@
 
 bool AUTO_BORDER_CROP_PIXELS = false;
 int BORDER_CROP_PIXELS = DEFAULT_BORDER_CROP_PIXELS;
-bool DEBUG = true;
+bool DEBUG = false;
 
 struct VideoInfo {
     double frame_width;
@@ -280,7 +280,7 @@ void writeStabilizedVideo(cv::VideoCapture &video_reader, cv::VideoWriter &video
             video_reader >> current_frame;
 
             if (current_frame.empty()) {
-                logger.log(LogLevel::INFO, "Все фреймы выходного видео обработаны!");
+                logger.log(LogLevel::INFO, "Все фреймы выходного видео этапы коррекции!");
                 break;
             }
 
