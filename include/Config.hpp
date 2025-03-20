@@ -8,5 +8,6 @@ const int NFRAMES_SMOOTH_COEF = 10;  // сглаживать по скока к�
 const int MAX_CROP_PIXELS = 500;     // чтобы не ввели кроп на миллион
 const int SUCCESS_TRACKING_STATUS = 1;  // хорошие точки имеют статус 1
 const int ADDITION_PREVIEW_OFFSET = 10;  // рамка между видосами в дебаг компейр режиме
+const int DEFAULT_BORDER_CROP_PIXELS = 20;
 
 #endif  // CONFIG_H
